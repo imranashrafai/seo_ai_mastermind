@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1097842554330",
+    "project_id": "seo-ai-mastermind",
+    "storage_bucket": "seo-ai-mastermind.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1097842554330:android:1e272ce6bc7ff832c77ce3",
+        "android_client_info": {
+          "package_name": "com.example.seo_ai_mastermind"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1097842554330-cs12av3rc15i71156qlvjb72u8sj426l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCm_j2hOocnqeLZVEGwN-9_HeSiHPzZI8o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1097842554330-cs12av3rc15i71156qlvjb72u8sj426l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1097842554330-l2uo5k63uc4ek8mskvr1gpehdfrqqvk1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.seoAiMastermind"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
