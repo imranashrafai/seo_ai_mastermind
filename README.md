@@ -79,8 +79,6 @@ This project is licensed under the MIT License.
 ## 👨‍💻 Developed By
 
 **Imran Ashraf**  
-📧 Email: [imranashraf0k@gmail.com](mailto:imranashraf0k@gmail.com)  
-🔗 GitHub: [imranashrafai](https://github.com/imranashrafai)  
-🔗 LinkedIn: [imranashrafai](https://www.linkedin.com/in/imranashrafai)
-
+📧 Email: [imranashraf0k@gmail.com](mailto:imranashraf0k@gmail.com)   🔗 GitHub: [imranashrafai](https://github.com/imranashrafai)  
+🔗 LinkedIn: [imranashrafai](https://www.linkedin.com/in/imranashrafai) 🔗 Figma: [Figma App Design](https://www.figma.com/community/file/1516771655085107494/seo-ai-mastermind)
 
