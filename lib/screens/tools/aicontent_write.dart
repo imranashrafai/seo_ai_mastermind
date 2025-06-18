@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../providers/theme_provider.dart';
 
 // --- Color Scheme ---
@@ -29,7 +29,7 @@ class _AiContentWriterScreenState extends ConsumerState<AiContentWriterScreen> {
   bool isLoading = false;
 
   // ❗ Replace with your own securely stored key in production
-  static const String openAIApiKey = 'YOUR_OPENAI_API_KEY';
+  static const String openAIApiKey = dotenv.env['OPENAI_API_KEY'];
 
   Future<void> _generateContent() async {
     final keywords = _keywordController.text.trim();
@@ -51,12 +51,29 @@ class _AiContentWriterScreenState extends ConsumerState<AiContentWriterScreen> {
       'messages': [
         {
           'role': 'user',
-          'content': 'Write a detailed SEO‑optimized article on: $keywords'
+          'content': '''
+You are a professional SEO content writer. Write a well-structured, informative, and SEO-optimized article on the topic: "$keywords".
+
+Instructions:
+- Article length: Between 150 and 200 words.
+- Use clear headings (H2) and short paragraphs.
+- Include relevant keywords naturally.
+- Start with a compelling introduction, and end with a brief conclusion.
+- Avoid fluff and make content valuable to readers.
+- Do not mention that you are an AI or chatbot.
+
+Format:
+1. Title
+2. Introduction
+3. Subheadings with meaningful content
+4. Conclusion
+'''
         }
       ],
       'temperature': 0.7,
-      'max_tokens': 700,
+      'max_tokens': 270,
     });
+
 
     int retry = 0;
     int backoff = 2;
