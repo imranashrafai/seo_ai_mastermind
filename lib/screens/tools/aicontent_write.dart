@@ -5,31 +5,30 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/theme_provider.dart';
 
-// --- Color Scheme ---
 const primaryColor = Color(0xFF2D5EFF);
 const backgroundLight = Color(0xFFF4F7FE);
 const backgroundDark = Color(0xFF121212);
 const cardLight = Color(0xFFE6EAF3);
 const cardDark = Color(0xFF1E1E1E);
-// ---------------------
 
 class AiContentWriterScreen extends ConsumerStatefulWidget {
   const AiContentWriterScreen({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<AiContentWriterScreen> createState() =>
-      _AiContentWriterScreenState();
+  ConsumerState<AiContentWriterScreen> createState() => _AiContentWriterScreenState();
 }
 
 class _AiContentWriterScreenState extends ConsumerState<AiContentWriterScreen> {
   final TextEditingController _keywordController = TextEditingController();
   String? generatedContent;
   bool isLoading = false;
+  bool isSaving = false;
 
-  // ❗ Replace with your own securely stored key in production
-  static const String openAIApiKey = dotenv.env['OPENAI_API_KEY'];
+  final String openAIApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
 
   Future<void> _generateContent() async {
     final keywords = _keywordController.text.trim();
@@ -45,35 +44,33 @@ class _AiContentWriterScreenState extends ConsumerState<AiContentWriterScreen> {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $openAIApiKey',
     };
-
     final body = jsonEncode({
       'model': 'gpt-3.5-turbo',
       'messages': [
         {
           'role': 'user',
           'content': '''
-You are a professional SEO content writer. Write a well-structured, informative, and SEO-optimized article on the topic: "$keywords".
-
-Instructions:
-- Article length: Between 150 and 200 words.
-- Use clear headings (H2) and short paragraphs.
-- Include relevant keywords naturally.
-- Start with a compelling introduction, and end with a brief conclusion.
-- Avoid fluff and make content valuable to readers.
-- Do not mention that you are an AI or chatbot.
-
-Format:
-1. Title
-2. Introduction
-3. Subheadings with meaningful content
-4. Conclusion
-'''
+            You are a professional SEO content writer. Write a well-structured, informative, and SEO-optimized article on the topic: "$keywords".
+            
+            Instructions:
+            - Article length: Between 100 and 125 words.
+            - Use clear headings (H2) and short paragraphs.
+            - Include relevant keywords naturally.
+            - Start with a compelling introduction, and end with a brief conclusion.
+            - Avoid fluff and make content valuable to readers.
+            - Do not mention that you are an AI or chatbot.
+            
+            Format:
+            1. Title
+            2. Introduction
+            3. Subheadings with meaningful content
+            '''
         }
       ],
       'temperature': 0.7,
-      'max_tokens': 270,
-    });
-
+      'max_tokens': 150,
+    }
+    );
 
     int retry = 0;
     int backoff = 2;
@@ -84,8 +81,10 @@ Format:
 
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
+          final articleText = data['choices'][0]['message']['content'];
+
           setState(() {
-            generatedContent = data['choices'][0]['message']['content'];
+            generatedContent = articleText;
             isLoading = false;
           });
           return;
@@ -111,11 +110,43 @@ Format:
         return;
       }
     }
-
     setState(() {
       generatedContent = 'Quota exceeded. Please try later.';
       isLoading = false;
     });
+  }
+
+  Future<void> _saveToFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || generatedContent == null || _keywordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login required or content is empty')),
+      );
+      return;
+    }
+    setState(() => isSaving = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('articles')
+          .add({
+        'keyword': _keywordController.text.trim(),
+        'content': generatedContent,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Article saved to Firestore')),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save article')),
+      );
+    } finally {
+      setState(() => isSaving = false);
+    }
   }
 
   @override
@@ -140,10 +171,29 @@ Format:
           fontWeight: FontWeight.bold,
           fontSize: isLarge ? 22 : 18,
         ),
+        actions: [
+          if (generatedContent != null)
+            IconButton(
+              icon: isSaving
+                  ? const Padding(
+                padding: EdgeInsets.all(10),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                ),
+              )
+                  : const Icon(Icons.save),
+              tooltip: 'Save to Firestore',
+              onPressed: isSaving ? null : _saveToFirestore,
+            )
+        ],
       ),
       body: Padding(
-        padding:
-        EdgeInsets.symmetric(horizontal: isLarge ? 32 : 20, vertical: 20),
+        padding: EdgeInsets.symmetric(horizontal: isLarge ? 32 : 20, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -179,19 +229,17 @@ Format:
               child: ElevatedButton.icon(
                 icon: isLoading
                     ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
                     : const Icon(Icons.auto_fix_high),
                 label: const Text('Generate Article'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
-                  padding:
-                  EdgeInsets.symmetric(vertical: isLarge ? 16 : 12),
-                  textStyle:
-                  TextStyle(fontSize: isLarge ? 18 : 16, fontWeight: FontWeight.w600),
+                  padding: EdgeInsets.symmetric(vertical: isLarge ? 16 : 12),
+                  textStyle: TextStyle(fontSize: isLarge ? 18 : 16, fontWeight: FontWeight.w600),
                 ),
                 onPressed: isLoading ? null : _generateContent,
               ),
@@ -233,11 +281,9 @@ Format:
                         icon: const Icon(Icons.copy),
                         label: const Text('Copy'),
                         onPressed: () {
-                          Clipboard.setData(
-                              ClipboardData(text: generatedContent!));
+                          Clipboard.setData(ClipboardData(text: generatedContent!));
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Article copied to clipboard')),
+                            const SnackBar(content: Text('Article copied to clipboard')),
                           );
                         },
                       ),
