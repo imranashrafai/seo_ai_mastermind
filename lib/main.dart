@@ -85,12 +85,8 @@ class MyApp extends ConsumerWidget {
           case '/premium_congrats':
             final args = settings.arguments as Map<String, dynamic>?;
             final isDarkMode = args?['isDarkMode'] ?? false;
-            final onDismiss = args?['onDismiss'] as VoidCallback?;
             return MaterialPageRoute(
-              builder: (_) => PremiumDialog(
-                isDarkMode: isDarkMode,
-                onDismiss: onDismiss ?? () => Navigator.pop(context),
-              ),
+              builder: (_) => PremiumCongratsScreen(isDarkMode: isDarkMode),
             );
           default:
             return MaterialPageRoute(
