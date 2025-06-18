@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/theme_provider.dart';
+import 'ProjectDetailScreen.dart';
 
-// Color Scheme
 const primaryColor = Color(0xFF2D5EFF);
 const backgroundLight = Color(0xFFF4F7FE);
 const backgroundDark = Color(0xFF121212);
@@ -19,34 +21,6 @@ class SavedProjectsScreen extends ConsumerStatefulWidget {
 class _SavedProjectsScreenState extends ConsumerState<SavedProjectsScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isScrolled = false;
-
-  final List<Map<String, String>> _savedProjects = const [
-    {
-      'title': 'E-commerce Site Keyword Research',
-      'date': 'May 25, 2025',
-      'type': 'Keyword Research',
-    },
-    {
-      'title': 'Blog Post: "The Future of AI in SEO"',
-      'date': 'May 20, 2025',
-      'type': 'AI Content',
-    },
-    {
-      'title': 'Competitor Analysis for "TechGadgets"',
-      'date': 'May 18, 2025',
-      'type': 'Competitor Analysis',
-    },
-    {
-      'title': 'SEO Audit Report: "MyCompany Website"',
-      'date': 'May 10, 2025',
-      'type': 'SEO Analyzer',
-    },
-    {
-      'title': 'Local SEO Strategy for "Coffee Shop"',
-      'date': 'April 30, 2025',
-      'type': 'Keyword Research',
-    },
-  ];
 
   @override
   void initState() {
@@ -69,21 +43,6 @@ class _SavedProjectsScreenState extends ConsumerState<SavedProjectsScreen> {
     }
   }
 
-  IconData _getIconForType(String type) {
-    switch (type) {
-      case 'Keyword Research':
-        return Icons.search;
-      case 'AI Content':
-        return Icons.edit;
-      case 'Competitor Analysis':
-        return Icons.show_chart;
-      case 'SEO Analyzer':
-        return Icons.analytics;
-      default:
-        return Icons.folder;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = ref.watch(themeProvider);
@@ -92,138 +51,169 @@ class _SavedProjectsScreenState extends ConsumerState<SavedProjectsScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isLargeScreen = screenWidth >= 600;
 
-    // AppBar color logic
-    final appBarBgColor = isDarkMode
-        ? backgroundDark
-        : _isScrolled
-        ? primaryColor
-        : backgroundLight;
-
-    final appBarContentColor = isDarkMode
-        ? Colors.white
-        : _isScrolled
-        ? Colors.white
-        : Colors.black87;
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       backgroundColor: isDarkMode ? backgroundDark : backgroundLight,
       appBar: AppBar(
-        backgroundColor: appBarBgColor,
+        backgroundColor: primaryColor,
         elevation: _isScrolled ? 4 : 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: appBarContentColor),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'Saved Projects',
           style: TextStyle(
-            color: appBarContentColor,
+            color: Colors.white,
+            fontSize: isLargeScreen ? 24 : 20,
             fontWeight: FontWeight.bold,
+            letterSpacing: 1,
           ),
         ),
-        iconTheme: IconThemeData(color: appBarContentColor),
       ),
-      body: _savedProjects.isEmpty
+      body: user == null
           ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.folder_open,
-              size: isLargeScreen ? 100 : 70,
-              color: textColor.withOpacity(0.5),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'No projects saved yet!',
-              style: TextStyle(
-                fontSize: isLargeScreen ? 20 : 16,
-                color: textColor.withOpacity(0.7),
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Start using our tools to save your work.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: isLargeScreen ? 16 : 14,
-                color: textColor.withOpacity(0.5),
-              ),
-            ),
-          ],
+        child: Text(
+          'Please log in to view your saved projects.',
+          style: TextStyle(color: textColor),
         ),
       )
-          : ListView.builder(
-        controller: _scrollController,
-        padding: EdgeInsets.all(isLargeScreen ? 20.0 : 12.0),
-        itemCount: _savedProjects.length,
-        itemBuilder: (context, index) {
-          final project = _savedProjects[index];
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: EdgeInsets.all(isLargeScreen ? 18 : 14),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: primaryColor.withOpacity(0.15),
-                  child: Icon(
-                    _getIconForType(project['type']!),
-                    color: primaryColor,
+          : StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('articles')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.folder_open,
+                      size: isLargeScreen ? 100 : 70,
+                      color: textColor.withOpacity(0.5)),
+                  const SizedBox(height: 20),
+                  Text(
+                    'No projects saved yet!',
+                    style: TextStyle(
+                        fontSize: isLargeScreen ? 20 : 16,
+                        color: textColor.withOpacity(0.7)),
                   ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        project['title']!,
-                        style: TextStyle(
-                          fontSize: isLargeScreen ? 18 : 16,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Use tools like AI Writer to save your work.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: isLargeScreen ? 16 : 14,
+                        color: textColor.withOpacity(0.5)),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final projects = snapshot.data!.docs;
+
+          return ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.all(isLargeScreen ? 20 : 12),
+            itemCount: projects.length,
+            itemBuilder: (context, index) {
+              final data =
+              projects[index].data() as Map<String, dynamic>;
+              final keyword = data['keyword'] ?? 'Untitled Project';
+              final content = data['content'] ?? '';
+              final timestamp = data['createdAt'] as Timestamp?;
+              final dateStr = timestamp != null
+                  ? '${timestamp.toDate().day}/${timestamp.toDate().month}/${timestamp.toDate().year}'
+                  : 'Unknown Date';
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProjectDetailScreen(
+                        keyword: keyword,
+                        content: content,
+                        date: dateStr,
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        project['type']!,
-                        style: TextStyle(
-                          fontSize: isLargeScreen ? 14 : 12,
-                          color: textColor.withOpacity(0.7),
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        project['date']!,
-                        style: TextStyle(
-                          fontSize: isLargeScreen ? 12 : 10,
-                          color: textColor.withOpacity(0.5),
-                        ),
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.all(isLargeScreen ? 18 : 14),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: primaryColor.withOpacity(0.15),
+                        child: Icon(Icons.edit, color: primaryColor),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              keyword,
+                              style: TextStyle(
+                                fontSize: isLargeScreen ? 18 : 16,
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              dateStr,
+                              style: TextStyle(
+                                fontSize: isLargeScreen ? 12 : 11,
+                                color: textColor.withOpacity(0.5),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              content,
+                              style: TextStyle(
+                                fontSize: isLargeScreen ? 14 : 13,
+                                color: textColor.withOpacity(0.9),
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios,
+                          size: isLargeScreen ? 20 : 16,
+                          color: textColor.withOpacity(0.6)),
+                    ],
+                  ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: textColor.withOpacity(0.6),
-                  size: isLargeScreen ? 20 : 16,
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
