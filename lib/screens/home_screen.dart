@@ -248,7 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     context: context,
                     value: keywordsCount,
                     title: 'Keywords',
-                    subtext: '1 left',
+                    subtext: '0 left',
                     isDarkMode: isDarkMode,
                   ),
                 ),
